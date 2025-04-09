@@ -1,0 +1,26 @@
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        swapped = False
+        for j in range(0, n - i - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swapped = True
+        if not swapped:
+            break
+
+def input_numbers():
+    while True:
+        try:
+            input_str = input("Введите числа через пробел: ")
+            numbers = list(map(int, input_str.split()))
+            return numbers
+        except ValueError:
+            print("Ошибка! Вводите только числа, разделенные пробелами.\n")
+
+# Основная программа
+print("=== Пузырьковая сортировка ===")
+numbers = input_numbers()
+print("\nИсходный список:", numbers)
+bubble_sort(numbers)
+print("Отсортированный список:", numbers)
