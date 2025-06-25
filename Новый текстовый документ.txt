@@ -1,0 +1,99 @@
+import sqlite3
+import hashlib
+import secrets
+import string
+
+conn = sqlite3.connect('passwords.db')
+cursor = conn.cursor()
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL
+    )
+''')
+conn.commit()
+
+
+def generate_password(length=12):
+    """Генерация случайного пароля."""
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(characters) for _ in range(length))
+
+
+def hash_password(password, salt=None):
+    """Хеширование пароля с солью (SHA-256)."""
+    if salt is None:
+        salt = secrets.token_hex(16)  # Генерируем случайную соль
+    salted_password = password + salt
+    hash_obj = hashlib.sha256(salted_password.encode('utf-8'))
+    return hash_obj.hexdigest(), salt
+
+
+def save_user(username, password):
+    """Сохранение пользователя в БД с хешем пароля."""
+    password_hash, salt = hash_password(password)
+    try:
+        cursor.execute('''
+            INSERT INTO users (username, password_hash, salt) 
+            VALUES (?, ?, ?)
+        ''', (username, password_hash, salt))
+        conn.commit()
+        print(f"Пользователь '{username}' успешно зарегистрирован!")
+    except sqlite3.IntegrityError:
+        print(f"Ошибка: пользователь '{username}' уже существует.")
+
+
+def verify_password(username, input_password):
+    """Проверка пароля пользователя."""
+    cursor.execute('''
+        SELECT password_hash, salt FROM users WHERE username = ?
+    ''', (username,))
+    result = cursor.fetchone()
+    if not result:
+        print(f"Ошибка: пользователь '{username}' не найден.")
+        return False
+
+    stored_hash, salt = result
+    input_hash, _ = hash_password(input_password, salt)
+
+    if input_hash == stored_hash:
+        print("Пароль верный!")
+        return True
+    else:
+        print("Неверный пароль!")
+        return False
+
+
+def main():
+    print("1. Регистрация нового пользователя")
+    print("2. Проверка пароля")
+    print("3. Выход")
+
+    while True:
+        choice = input("Выберите действие (1/2/3): ")
+
+        if choice == '1':
+            username = input("Введите имя пользователя: ")
+            password = generate_password()
+            print(f"Сгенерированный пароль: {password}")
+            save_user(username, password)
+
+        elif choice == '2':
+            username = input("Введите имя пользователя: ")
+            password = input("Введите пароль: ")
+            verify_password(username, password)
+
+        elif choice == '3':
+            print("Выход...")
+            break
+
+        else:
+            print("Неверный выбор. Попробуйте снова.")
+
+
+if __name__ == "__main__":
+    main()
+    conn.close()
